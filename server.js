@@ -1,22 +1,24 @@
-// server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
-const admin = require('firebase-admin');
-const { v4: uuidv4 } = require('uuid'); // для уникальных имен файлов
 const crypto = require('crypto'); // для генерации реферального кода
+const fs = require('fs');
 
-// Firebase Admin SDK
-const serviceAccount = require('./firebase-config.json');
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  storageBucket: 'your-project-id.appspot.com', // замените на ваш ID проекта
+// Настройка для загрузки файлов через multer в папку images
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'images'); // путь к папке для хранения изображений
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  },
 });
 
-const bucket = admin.storage().bucket();
+const upload = multer({ storage });
 
 const app = express();
 app.use(cors());
@@ -26,60 +28,28 @@ mongoose.connect('mongodb://localhost:27017/yourdb', {
   useUnifiedTopology: true,
 });
 
-// Настройка для загрузки файлов через multer
-const upload = multer({ storage: multer.memoryStorage() });
-
-// Определение схем
 const TaskSchema = new mongoose.Schema({
   title: { type: String, required: true },
   completed: { type: Boolean, default: false },
+  url: { type: String, required: false },
   points: { type: Number, default: 0 }, // Очки за выполнение задания
-  image: { type: String }, // URL изображения задания
+  image: { type: String }, // Имя файла изображения задания
 });
 
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   tg_id: { type: String, unique: true, required: true }, // Telegram ID
   points: { type: Number, default: 0 },
-  avatar: { type: String }, // URL аватарки пользователя
+  avatar: { type: String }, // Имя файла аватарки пользователя
   tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }], // Ссылка на задания
-  referral_code: { type: String, unique: true, required: false,default:0 }, // Уникальный реферальный код
+  referral_code: { type: String, unique: true, required: false, default: 0 }, // Уникальный реферальный код
   invited_by: { type: String }, // Реферальный код пригласившего пользователя
 });
 
-// Определение моделей
 const UserModel = mongoose.model('User', UserSchema);
 const TaskModel = mongoose.model('Task', TaskSchema);
 
 app.use(bodyParser.json());
-
-// Функция для загрузки файла в Firebase Storage и получения URL
-const uploadImageToFirebase = (file) => {
-  return new Promise((resolve, reject) => {
-    if (!file) {
-      resolve(null);
-      return;
-    }
-
-    const blob = bucket.file(`${uuidv4()}${path.extname(file.originalname)}`);
-    const blobStream = blob.createWriteStream({
-      metadata: {
-        contentType: file.mimetype,
-      },
-    });
-
-    blobStream.on('error', (err) => {
-      reject(err);
-    });
-
-    blobStream.on('finish', async () => {
-      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-      resolve(publicUrl);
-    });
-
-    blobStream.end(file.buffer);
-  });
-};
 
 // Функция для генерации уникального реферального кода
 const generateReferralCode = () => {
@@ -89,11 +59,14 @@ const generateReferralCode = () => {
 // Маршрут для добавления нового задания
 app.post('/api/tasks', upload.single('image'), async (req, res) => {
   try {
-    const imageUrl = await uploadImageToFirebase(req.file);
+    const imageUrl = req.file ? `${req.protocol}://${req.get('host')}/images/${req.file.filename}` : null;
+
     const task = new TaskModel({
       title: req.body.title,
       points: req.body.points,
-      image: imageUrl,
+      url: req.body.url,
+      completed: req.body.completed,
+      image: imageUrl, // Сохраняем ссылку на изображение
     });
 
     const result = await task.save();
@@ -102,7 +75,6 @@ app.post('/api/tasks', upload.single('image'), async (req, res) => {
     res.status(500).json({ message: 'Error creating task', error: err });
   }
 });
-
 // Маршрут для получения всех заданий
 app.get('/api/tasks', (req, res) => {
   TaskModel.find()
@@ -117,14 +89,14 @@ app.get('/api/tasks', (req, res) => {
 // Маршрут для добавления нового пользователя
 app.post('/api/users', upload.single('avatar'), async (req, res) => {
   try {
-    const avatarUrl = await uploadImageToFirebase(req.file);
+    const avatarUrl = req.file ? `${req.protocol}://${req.get('host')}/images/${req.file.filename}` : null;
     const referralCode = generateReferralCode();
 
     const user = new UserModel({
       name: req.body.name,
       tg_id: req.body.tg_id,
       points: req.body.points || 0,
-      avatar: avatarUrl,
+      avatar: avatarUrl, // Сохраняем ссылку на аватар
       referral_code: referralCode,
       invited_by: req.body.invited_by || null,
     });
@@ -135,16 +107,15 @@ app.post('/api/users', upload.single('avatar'), async (req, res) => {
     res.status(500).json({ message: 'Error creating user', error: err });
   }
 });
-
 // Маршрут для получения пользователя по tg_id
 app.get('/api/users/tg/:tg_id', (req, res) => {
   const tg_id = req.params.tg_id;
-  const field = req.query.field; // Получаем поле из query параметров
+  const field = req.query.field;
 
   let query = UserModel.findOne({ tg_id });
 
   if (field) {
-    query = query.select(field); // Указываем конкретное поле для выборки
+    query = query.select(field);
   }
 
   query
@@ -285,6 +256,13 @@ app.patch('/api/tasks/:taskId', (req, res) => {
     .catch(err => {
       res.status(500).json({ message: 'Error updating task', error: err });
     });
+});
+
+// Маршрут для получения изображения по его имени
+app.get('/images/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filepath = path.join(__dirname, 'images', filename);
+  res.sendFile(filepath);
 });
 
 // Запуск сервера
