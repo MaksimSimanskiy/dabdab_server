@@ -25,7 +25,7 @@ const upload = multer({ storage });
 const app = express();
 app.use(cors());
 // Подключение к базе данных MongoDB
-mongoose.connect('mongodb://localhost:27017/yourdb', {
+mongoose.connect('mongodb://94.228.114.20:27017/yourdb', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
