@@ -6,6 +6,8 @@ const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto'); // для генерации реферального кода
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+
 
 // Настройка для загрузки файлов через multer в папку images
 const storage = multer.diskStorage({
