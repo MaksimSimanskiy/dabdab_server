@@ -180,11 +180,10 @@ app.get('/api/users/tg/:tg_id/referrals', (req, res) => {
       res.status(500).json({ message: 'Error fetching referral count', error: err });
     });
 });
-
+//one task
 app.post('/api/users/tg/:tg_id/task', (req, res) => {
   const tg_id = req.params.tg_id;
   const taskId = req.body.taskId;
-
   UserModel.findOne({ tg_id: tg_id }) // Ищем пользователя по tg_id
     .then(user => {
       if (!user) {
@@ -207,11 +206,10 @@ app.post('/api/users/tg/:tg_id/task', (req, res) => {
     });
 });
 
-
+//all tasks
 app.post('/api/users/tg/:tg_id/tasks', async (req, res) => {
   const tg_id = req.params.tg_id;
 
-  try {
     // Находим пользователя по tg_id
     const user = await UserModel.findOne({ tg_id: tg_id });
 
@@ -244,9 +242,7 @@ app.post('/api/users/tg/:tg_id/tasks', async (req, res) => {
       user: populatedUser
     });
 
-  } catch (err) {
-    res.status(500).json({ message: 'Error adding tasks to user', error: err });
-  }
+  
 });
 
 
