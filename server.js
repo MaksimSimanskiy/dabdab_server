@@ -182,7 +182,7 @@ app.get('/api/users/tg/:tg_id/referrals', (req, res) => {
 });
 
 // Маршрут для добавления задания пользователю из списка существующих
-app.post('/api/users/:id/tasks', (req, res) => {
+app.post('/api/users/:id/task', (req, res) => {
   const userId = req.params.id;
   const taskId = req.body.taskId;
 
@@ -199,6 +199,39 @@ app.post('/api/users/:id/tasks', (req, res) => {
     })
     .catch(err => {
       res.status(500).json({ message: 'Error adding task to user', error: err });
+    });
+});
+
+app.post('/api/users/:id/tasks', (req, res) => {
+  const userId = req.params.id;
+  const taskIds = req.body.taskIds; // Ожидаем массив taskIds
+
+  // Проверяем, что taskIds является массивом
+  if (!Array.isArray(taskIds)) {
+    return res.status(400).json({ message: 'taskIds must be an array' });
+  }
+
+  UserModel.findById(userId)
+    .then(user => {
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Фильтруем задачи, которые уже есть у пользователя
+      const newTasks = taskIds.filter(taskId => !user.tasks.includes(taskId));
+
+      // Добавляем только новые задачи
+      if (newTasks.length > 0) {
+        user.tasks.push(...newTasks);
+      }
+
+      return user.save();
+    })
+    .then(updatedUser => {
+      res.status(200).json({ message: 'Tasks added to user successfully', user: updatedUser });
+    })
+    .catch(err => {
+      res.status(500).json({ message: 'Error adding tasks to user', error: err });
     });
 });
 
