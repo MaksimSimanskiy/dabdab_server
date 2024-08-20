@@ -228,12 +228,17 @@ app.post('/api/users/:id/tasks', (req, res) => {
       return user.save();
     })
     .then(updatedUser => {
-      res.status(200).json({ message: 'Tasks added to user successfully', user: updatedUser });
+      // Популяризация tasks перед отправкой ответа
+      return updatedUser.populate('tasks').execPopulate();
+    })
+    .then(populatedUser => {
+      res.status(200).json({ message: 'Tasks added to user successfully', user: populatedUser });
     })
     .catch(err => {
       res.status(500).json({ message: 'Error adding tasks to user', error: err });
     });
 });
+
 
 // Маршрут для обновления статуса выполнения задания пользователем
 app.put('/api/users/:userId/tasks/:taskId', (req, res) => {
