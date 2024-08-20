@@ -106,7 +106,7 @@ app.post('/api/users', upload.single('avatar'), async (req, res) => {
     res.status(500).json({ message: 'Error creating user', error: err });
   }
 });
-// Маршрут для получения пользователя по tg_id
+// Маршрут для получения поля пользователя по tg_id
 app.get('/api/users/tg/:tg_id', (req, res) => {
   const tg_id = req.params.tg_id;
   const field = req.query.field;
@@ -235,7 +235,7 @@ app.post('/api/users/tg/:tg_id/tasks', async (req, res) => {
     const updatedUser = await user.save();
 
     // Популяризируем tasks перед отправкой ответа
-    const populatedUser = await updatedUser.populate('tasks').execPopulate();
+    const populatedUser = await updatedUser.populate('tasks');
 
     res.status(200).json({
       message: 'All tasks added to user successfully',
