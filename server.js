@@ -182,8 +182,8 @@ app.get('/api/users/tg/:tg_id/referrals', (req, res) => {
 });
 
 // Маршрут для добавления задания пользователю из списка существующих
-app.post('/api/users/:id/task', (req, res) => {
-  const userId = req.params.id;
+app.post('/api/users/tg/:id/task', (req, res) => {
+  const userId = req.params.tg_id
   const taskId = req.body.taskId;
 
   UserModel.findById(userId)
@@ -202,41 +202,44 @@ app.post('/api/users/:id/task', (req, res) => {
     });
 });
 
-app.post('/api/users/:id/tasks', (req, res) => {
+app.post('/api/users/tg/:id/tasks', async (req, res) => {
   const userId = req.params.id;
-  const taskIds = req.body.taskIds; // Ожидаем массив taskIds
+  try {
+    // Найти пользователя по его ID
+    const user = await UserModel.findById(userId);
 
-  // Проверяем, что taskIds является массивом
-  if (!Array.isArray(taskIds)) {
-    return res.status(400).json({ message: 'taskIds must be an array' });
-  }
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
-  UserModel.findById(userId)
-    .then(user => {
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
+    // Получить все задачи из коллекции tasks
+    const allTasks = await TaskModel.find({});
 
-      // Фильтруем задачи, которые уже есть у пользователя
-      const newTasks = taskIds.filter(taskId => !user.tasks.includes(taskId));
+    // Извлечь идентификаторы всех задач
+    const allTaskIds = allTasks.map(task => task._id);
 
-      // Добавляем только новые задачи
-      if (newTasks.length > 0) {
-        user.tasks.push(...newTasks);
-      }
+    // Фильтровать задачи, которые ещё не добавлены пользователю
+    const newTasks = allTaskIds.filter(taskId => !user.tasks.includes(taskId));
 
-      return user.save();
-    })
-    .then(updatedUser => {
-      // Популяризация tasks перед отправкой ответа
-      return updatedUser.populate('tasks').execPopulate();
-    })
-    .then(populatedUser => {
-      res.status(200).json({ message: 'Tasks added to user successfully', user: populatedUser });
-    })
-    .catch(err => {
-      res.status(500).json({ message: 'Error adding tasks to user', error: err });
+    // Добавить новые задачи пользователю
+    if (newTasks.length > 0) {
+      user.tasks.push(...newTasks);
+    }
+
+    // Сохранить обновленного пользователя
+    const updatedUser = await user.save();
+
+    // Популяризация tasks перед отправкой ответа
+    const populatedUser = await updatedUser.populate('tasks').execPopulate();
+
+    res.status(200).json({
+      message: 'All tasks added to user successfully',
+      user: populatedUser
     });
+
+  } catch (err) {
+    res.status(500).json({ message: 'Error adding tasks to user', error: err });
+  }
 });
 
 
