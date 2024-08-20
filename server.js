@@ -181,17 +181,22 @@ app.get('/api/users/tg/:tg_id/referrals', (req, res) => {
     });
 });
 
-// Маршрут для добавления задания пользователю из списка существующих
-app.post('/api/users/tg/:id/task', (req, res) => {
-  const userId = req.params.tg_id
+app.post('/api/users/tg/:tg_id/task', (req, res) => {
+  const tg_id = req.params.tg_id;
   const taskId = req.body.taskId;
 
-  UserModel.findById(userId)
+  UserModel.findOne({ tg_id: tg_id }) // Ищем пользователя по tg_id
     .then(user => {
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
-      user.tasks.push(taskId);
+
+      // Проверяем, есть ли уже эта задача у пользователя
+      if (user.tasks.includes(taskId)) {
+        return res.status(400).json({ message: 'Task already assigned to user' });
+      }
+
+      user.tasks.push(taskId); // Добавляем задачу пользователю
       return user.save();
     })
     .then(updatedUser => {
@@ -202,34 +207,36 @@ app.post('/api/users/tg/:id/task', (req, res) => {
     });
 });
 
-app.post('/api/users/tg/:id/tasks', async (req, res) => {
-  const userId = req.params.id;
+
+app.post('/api/users/tg/:tg_id/tasks', async (req, res) => {
+  const tg_id = req.params.tg_id;
+
   try {
-    // Найти пользователя по его ID
-    const user = await UserModel.findById(userId);
+    // Находим пользователя по tg_id
+    const user = await UserModel.findOne({ tg_id: tg_id });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Получить все задачи из коллекции tasks
+    // Получаем все задачи из коллекции tasks
     const allTasks = await TaskModel.find({});
 
-    // Извлечь идентификаторы всех задач
+    // Извлекаем идентификаторы всех задач
     const allTaskIds = allTasks.map(task => task._id);
 
-    // Фильтровать задачи, которые ещё не добавлены пользователю
+    // Фильтруем задачи, которые ещё не добавлены пользователю
     const newTasks = allTaskIds.filter(taskId => !user.tasks.includes(taskId));
 
-    // Добавить новые задачи пользователю
+    // Добавляем новые задачи пользователю
     if (newTasks.length > 0) {
       user.tasks.push(...newTasks);
     }
 
-    // Сохранить обновленного пользователя
+    // Сохраняем обновленного пользователя
     const updatedUser = await user.save();
 
-    // Популяризация tasks перед отправкой ответа
+    // Популяризируем tasks перед отправкой ответа
     const populatedUser = await updatedUser.populate('tasks').execPopulate();
 
     res.status(200).json({
@@ -243,13 +250,14 @@ app.post('/api/users/tg/:id/tasks', async (req, res) => {
 });
 
 
+
 // Маршрут для обновления статуса выполнения задания пользователем
-app.put('/api/users/:userId/tasks/:taskId', (req, res) => {
-  const { userId, taskId } = req.params;
+app.put('/api/users/tg/:tg_id/tasks/:taskId', (req, res) => {
+  const { tg_id, taskId } = req.params;
   const { completed } = req.body;
 
   UserModel.findOneAndUpdate(
-    { _id: userId, 'tasks': taskId },
+    { tg_id: tg_id, 'tasks': taskId }, // Ищем пользователя по tg_id и обновляем статус задачи
     { $set: { 'tasks.$.completed': completed } },
     { new: true }
   )
@@ -263,6 +271,7 @@ app.put('/api/users/:userId/tasks/:taskId', (req, res) => {
       res.status(500).json({ message: 'Error updating task status', error: err });
     });
 });
+
 
 // Маршрут для обновления полей пользователя по tg_id
 app.patch('/api/users/tg/:tg_id', (req, res) => {
