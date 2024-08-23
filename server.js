@@ -40,6 +40,7 @@ const UserSchema = new mongoose.Schema({
   tg_id: { type: String, unique: true, required: true }, // Telegram ID
   points: { type: Number, default: 0 },
   avatar: { type: String }, // Имя файла аватарки пользователя
+  wallet:{type:String,unique: true},
   tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }], // Ссылка на задания
   referral_code: { type: String, unique: true, required: false, default: 0 }, // Уникальный реферальный код
   invited_by: { type: String }, // Реферальный код пригласившего пользователя
@@ -180,6 +181,27 @@ app.get('/api/users/tg/:tg_id/referrals', (req, res) => {
       res.status(500).json({ message: 'Error fetching referral count', error: err });
     });
 });
+//список рефералов
+app.get('/api/users/tg/:tg_id/referrals/details', (req, res) => {
+  const tg_id = req.params.tg_id;
+
+  UserModel.findOne({ tg_id })
+    .then(user => {
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Ищем всех пользователей, у которых поле invited_by совпадает с referral_code данного пользователя
+      return UserModel.find({ invited_by: user.referral_code });
+    })
+    .then(referrals => {
+      res.status(200).json({ referrals });
+    })
+    .catch(err => {
+      res.status(500).json({ message: 'Error fetching referral details', error: err });
+    });
+});
+
 //one task
 app.post('/api/users/tg/:tg_id/task', (req, res) => {
   const tg_id = req.params.tg_id;
