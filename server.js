@@ -20,12 +20,15 @@ const storage = multer.diskStorage({
   },
 });
 
+
 const upload = multer({ storage });
 
 const app = express();
 app.use(cors());
 // Подключение к базе данных MongoDB
-mongoose.connect('mongodb://94.228.114.20:27017/yourdb');
+mongoose.connect('mongodb://dabdab:rAAtct9R@94.228.114.20:27017/yourdb')
+.then(() => console.log('MongoDB connected'))
+.catch(err => console.error('MongoDB connection error:', err));
 
 const TaskSchema = new mongoose.Schema({
   title: { type: String, required: true },
