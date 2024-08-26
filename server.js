@@ -62,9 +62,12 @@ const generateReferralCode = () => {
 };
 
 // Маршрут для добавления нового задания
-app.post('/api/tasks', upload.single('image'), async (req, res) => {
+// Маршрут для добавления нового задания
+app.post('/api/tasks', async (req, res) => {
   try {
-    const imageUrl = req.file ? `https://${req.get('host')}/images/${req.file.filename}` : null;
+    // Получаем название изображения из тела запроса
+    const imageName = req.body.imageName;
+    const imageUrl = imageName ? `${req.protocol}://${req.get('host')}/images/${imageName}` : null;
 
     const task = new TaskModel({
       title: req.body.title,
