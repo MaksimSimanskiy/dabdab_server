@@ -43,7 +43,7 @@ const UserSchema = new mongoose.Schema({
   tg_id: { type: String, unique: true, required: true }, // Telegram ID
   points: { type: Number, default: 0 },
   avatar: { type: String }, // Имя файла аватарки пользователя
-  wallet:{type:String,unique: true},
+  wallet:{ type:String, unique: true,required: false},
   tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }], // Ссылка на задания
   referral_code: { type: String, unique: true, required: false, default: 0 }, // Уникальный реферальный код
   invited_by: { type: String }, // Реферальный код пригласившего пользователя
@@ -99,6 +99,7 @@ app.post('/api/users', upload.single('avatar'), async (req, res) => {
       name: req.body.name,
       tg_id: req.body.tg_id,
       points: req.body.points || 0,
+      wallet: req.body.wallet || null,
       avatar: avatarUrl, // Сохраняем ссылку на аватар
       referral_code: referralCode,
       invited_by: req.body.invited_by || null,
