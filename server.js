@@ -67,7 +67,7 @@ app.post('/api/tasks', async (req, res) => {
   try {
     // Получаем название изображения из тела запроса
     const imageName = req.body.imageName;
-    const imageUrl = imageName ? `${req.protocol}://${req.get('host')}/images/${imageName}` : null;
+    const imageUrl = imageName ? `https://${req.get('host')}/images/${imageName}` : null;
 
     const task = new TaskModel({
       title: req.body.title,
