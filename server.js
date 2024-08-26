@@ -99,7 +99,7 @@ app.post('/api/users', upload.single('avatar'), async (req, res) => {
       name: req.body.name,
       tg_id: req.body.tg_id,
       points: req.body.points || 0,
-      wallet: req.body.wallet || null,
+      wallet: req.body.wallet || "nowallet",
       avatar: avatarUrl, // Сохраняем ссылку на аватар
       referral_code: referralCode,
       invited_by: req.body.invited_by || null,
