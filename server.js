@@ -66,7 +66,7 @@ const generateReferralCode = () => {
 app.post('/api/tasks', async (req, res) => {
   try {
     // Получаем название изображения из тела запроса
-    const imageName = req.body.imageName;
+    const imageName = req.body.image;
     const imageUrl = imageName ? `https://${req.get('host')}/images/${imageName}` : null;
 
     const task = new TaskModel({
