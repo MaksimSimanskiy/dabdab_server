@@ -43,7 +43,7 @@ const UserSchema = new mongoose.Schema({
   tg_id: { type: String, unique: true, required: true }, // Telegram ID
   points: { type: Number, default: 0 },
   avatar: { type: String }, // Имя файла аватарки пользователя
-  wallet:{ type:String, unique: true,required: false},
+  wallet:{ type:String,required: false},
   tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }], // Ссылка на задания
   referral_code: { type: String, unique: true, required: false, default: 0 }, // Уникальный реферальный код
   invited_by: { type: String }, // Реферальный код пригласившего пользователя
