@@ -49,6 +49,8 @@ const UserSchema = new mongoose.Schema({
   invited_by: { type: String }, // Реферальный код пригласившего пользователя
 });
 
+UserSchema.index({ points: -1 });
+
 const UserModel = mongoose.model('User', UserSchema);
 const TaskModel = mongoose.model('Task', TaskSchema);
 
@@ -204,6 +206,43 @@ app.get('/api/users/tg/:tg_id/referrals/details', (req, res) => {
     .catch(err => {
       res.status(500).json({ message: 'Error fetching referral details', error: err });
     });
+});
+
+//получение ранга
+app.get('/api/users/tg/:tg_id/rank', async (req, res) => {
+  const tg_id = req.params.tg_id;
+
+  try {
+    const user = await UserModel.findOne({ tg_id });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Используем агрегацию для подсчета ранга пользователя
+    const rankPipeline = [
+      {
+        $match: {
+          points: { $gte: user.points } // Находим всех пользователей с очками >= очков пользователя
+        }
+      },
+      {
+        $count: "rank" // Считаем количество таких пользователей
+      }
+    ];
+
+    const result = await UserModel.aggregate(rankPipeline);
+
+    if (result.length > 0) {
+      const rank = result[0].rank;
+      res.status(200).json({ rank });
+    } else {
+      res.status(200).json({ rank: 1 }); // Если пользователь единственный с такими очками, то его ранг будет 1
+    }
+
+  } catch (err) {
+    res.status(500).json({ message: 'Error calculating user rank', error: err });
+  }
 });
 
 //one task
